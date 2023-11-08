@@ -1,5 +1,5 @@
 import pygame as pg
-import sys
+import sys, os
 from sprites import *
 from settings import *
 
@@ -8,13 +8,25 @@ class Game:
     def __init__(self):
         pg.init()
         self.screen = pg.display.set_mode((WIDTH, HEIGHT))
-        pg.display.set_caption('Touhou Algorithm Genetic')
         self.clock = pg.time.Clock()
         pg.key.set_repeat(500, 100)
+        self.background = pg.transform.scale(BACKGROUND, (528, 816))
+        self.background_position = 0
+        self.music_path = os.path.join("audio", "TouhouBossMusic.mp3")
+        pg.mixer.music.load(self.music_path)
+        pg.mixer.music.play(2)
 
     def new(self):
         self.all_sprites = pg.sprite.Group()
-        self.player = Player(self, 8, 15)
+        self.walls = pg.sprite.Group()
+        for row in range(17):
+            Wall(self, -1, row)
+            Wall(self, 11, row)
+            if row < 17:
+                Wall(self, row, 17)
+                Wall(self, row, -1)
+        self.player = Player(self, 252, 722)
+        self.boss = Boss(self, 5, 1)
 
     def run(self):
         self.playing = True
@@ -38,10 +50,21 @@ class Game:
             pg.draw.line(self.screen, LIGHTGREY, (0, y), (WIDTH, y))
 
     def draw(self):
-        self.screen.fill(BLACK)
+        pg.display.set_caption(GAME_NAME + " FPS:({:.0f})".format(self.clock.get_fps()))
+        self.background_position += 1
+
+        if self.background_position >= self.background.get_height():
+            self.background_position = 0
+
+        self.screen.fill((0, 0, 0))
+        self.screen.blit(self.background, (0, self.background_position - self.background.get_height()))
+        self.screen.blit(self.background, (0, self.background_position))
+
         self.draw_grid()
         self.all_sprites.draw(self.screen)
+
         pg.display.flip()
+        self.clock.tick(60)
 
     def events(self):
         for event in pg.event.get():
@@ -50,14 +73,6 @@ class Game:
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_ESCAPE:
                     quit()
-                elif event.key == pg.K_LEFT:
-                    self.player.move(dx=-1)
-                elif event.key == pg.K_RIGHT:
-                    self.player.move(dx=1)
-                elif event.key == pg.K_UP:
-                    self.player.move(dy=-1)
-                elif event.key == pg.K_DOWN:
-                    self.player.move(dy=1)
 
     def show_start_screen(self):
         pass
