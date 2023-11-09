@@ -1,5 +1,7 @@
 import os
 import pygame as pg
+import math
+import random
 from settings import *
 
 vec = pg.math.Vector2
@@ -15,14 +17,9 @@ class Player(pg.sprite.Sprite):
         self.image = pg.image.load(self.imagen_path)
         self.image = pg.transform.scale(self.image, (24, 48))
         self.rect = self.image.get_rect()
-        # self.hit_rect = PLAYER_HIT_RECT
-        # self.hit_rect.center = self.rect.center
-        # self.vel = vec(0, 0)
-        # self.pos = vec(x, y) * TILESIZE
-        self.vx, self.vy = 0, 0
         self.x = x
         self.y = y
-        self.pos = vec(x, y) * TILESIZE
+        self.pos = vec(x, y)
         self.last_shot = 0
 
     def get_keys(self):
@@ -54,12 +51,16 @@ class Player(pg.sprite.Sprite):
             now = pg.time.get_ticks()
             if now - self.last_shot > BULLET_RATE:
                 self.last_shot = now
-                BulletCard(self.game, self.pos)
+                self.bullets_attack()
+
+        if keys[pg.K_z]:
+            self.bullets_special()
 
     def move(self, dx=0, dy=0):
         if not self.collide_with_walls(dx, dy):
             self.x += dx
             self.y += dy
+            self.pos = vec(self.x, self.y)
 
     def collide_with_walls(self, dir):
         if dir == 'x':
@@ -81,14 +82,118 @@ class Player(pg.sprite.Sprite):
                 self.vy = 0
                 self.rect.y = self.y
 
+    def bullets_attack(self):
+        bullet1 = BulletCard(self.game, self.pos)
+        bullet2 = BulletCard(self.game, self.pos + vec(24, 0))
+
+    def bullets_special(self):
+        bulletA = BulletSpecial(self.game, self.pos + vec(-35, 22))
+        bulletB = BulletSpecial(self.game, self.pos + vec(60, 22))
+        bulletC = BulletSpecial(self.game, self.pos + vec(12, 70))
+        bulletD = BulletSpecial(self.game, self.pos + vec(12, -25))
+
+        bulletA = BulletSpecialMini(self.game, self.pos + vec(-35, -25))
+        bulletB = BulletSpecialMini(self.game, self.pos + vec(60, -25))
+        bulletC = BulletSpecialMini(self.game, self.pos + vec(-35, 70))
+        bulletD = BulletSpecialMini(self.game, self.pos + vec(60, 70))
+
     def update(self):
         self.get_keys()
         self.x += self.vx * self.game.dt
         self.y += self.vy * self.game.dt
+        self.x = int(self.x)
+        self.y = int(self.y)
         self.rect.x = self.x
         self.collide_with_walls('x')
         self.rect.y = self.y
         self.collide_with_walls('y')
+        self.pos = vec(self.x, self.y)
+
+
+class BulletCard(pg.sprite.Sprite):
+    def __init__(self, game, pos):
+        self.groups = game.all_sprites
+        pg.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        bulletc_path = os.path.join("graphics", "R_Shots_A.png")
+        self.image = pg.image.load(bulletc_path)
+        self.rect = self.image.get_rect()
+        self.pos = vec(pos)
+        self.rect.center = pos
+        self.vel = vec(0, -BULLET_SPEED)
+        self.spawn_time = pg.time.get_ticks()
+
+    def update(self):
+        self.pos += self.vel * self.game.dt
+        self.rect.center = self.pos
+        if self.rect.bottom < 0:
+            self.kill()
+
+
+class BulletSpecial(pg.sprite.Sprite):
+    def __init__(self, game, pos):
+        super().__init__(game.all_sprites)
+        self.game = game
+
+        self.colors = ["R_Special_RA.png", "R_Special_GA.png", "R_Special_BA.png"]
+        color_index = random.randint(0, 2)
+        bullets_path = os.path.join("graphics", self.colors[color_index])
+
+        self.original_image = pg.image.load(bullets_path)
+        self.original_image = pg.transform.scale(self.original_image, (48, 48))
+        self.image = self.original_image
+        self.rect = self.image.get_rect()
+        self.pos = vec(pos)
+        self.rect.center = pos
+        self.vel = vec(0, -SBULLET_SPEED)
+        self.spawn_time = pg.time.get_ticks()
+        self.delay = 500
+
+    def update(self):
+        current_time = pg.time.get_ticks()
+        elapsed_time = current_time - self.spawn_time
+
+        if elapsed_time >= self.delay:
+            self.pos += self.vel * self.game.dt
+            self.rect.center = self.pos
+
+            if self.pos.y <= 0:
+                self.vel.y = SBULLET_SPEED
+
+            self.pos += self.vel * self.game.dt
+            self.rect.center = self.pos
+
+            if self.rect.top > HEIGHT:
+                self.kill()
+
+
+class BulletSpecialMini(pg.sprite.Sprite):
+    def __init__(self, game, pos):
+        super().__init__(game.all_sprites)
+        self.game = game
+
+        self.colors = ["R_Special_RB.png", "R_Special_GB.png", "R_Special_BB.png"]
+        color_index = random.randint(0, 2)
+        bullets_path = os.path.join("graphics", self.colors[color_index])
+
+        self.original_image = pg.image.load(bullets_path)
+        self.original_image = pg.transform.scale(self.original_image, (32, 32))
+        self.image = self.original_image
+        self.rect = self.image.get_rect()
+        self.pos = vec(pos)
+        self.rect.center = pos
+        self.vel = vec(0, -SBULLET_SPEED)
+        self.spawn_time = pg.time.get_ticks()
+        self.delay = 500
+
+    def update(self):
+        current_time = pg.time.get_ticks()
+        elapsed_time = current_time - self.spawn_time
+
+        if elapsed_time >= self.delay:
+            self.pos += self.vel * self.game.dt
+            self.rect.center = self.pos
+            self.rect.center = (self.pos.x, self.pos.y)
 
 
 class Boss(pg.sprite.Sprite):
@@ -103,44 +208,15 @@ class Boss(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.x = x
         self.y = y
+        self.pos = vec(self.x, self.y)
 
-    def move(self, dx=0, dy=0):
-        if not self.collide_with_walls(dx, dy):
-            self.x += dx
-            self.y += dy
-
-    def collide_with_walls(self, dx=0, dy=0):
-        for wall in self.game.walls:
-            if wall.x == self.x + dx and wall.y == self.y + dy:
-                return True
-        return False
+    def get_position(self):
+        return self.pos
 
     def update(self):
-        self.rect.x = self.x * TILESIZE
-        self.rect.y = self.y * TILESIZE
-
-
-class BulletCard(pg.sprite.Sprite):
-    def __init__(self, game, pos):
-        self.groups = game.all_sprites
-        pg.sprite.Sprite.__init__(self, self.groups)
-        self.game = game
-        bulletc_path = os.path.join("graphics", "R_Shots_A.png")
-        self.image = pg.image.load(bulletc_path)
-        self.rect = self.image.get_rect()
-        self.rect.x = 0
-        self.rect.y = 0
-        self.pos = vec(pos)
-        self.rect.center = pos
-        self.vel = BULLET_SPEED
-        self.spawn_time = pg.time.get_ticks()
-
-    def update(self):
-        self.pos += self.vel * self.game.dt
-        self.rect.center = self.pos
-        if self.rect.x > WIDTH or self.rect.y > HEIGHT:
-            self.kill()
-
+        self.rect.x = self.x
+        self.rect.y = self.y
+        self.pos = vec(self.x, self.y)
 
 
 class Wall(pg.sprite.Sprite):

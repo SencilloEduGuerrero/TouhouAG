@@ -26,7 +26,7 @@ class Game:
                 Wall(self, row, 17)
                 Wall(self, row, -1)
         self.player = Player(self, 252, 722)
-        self.boss = Boss(self, 5, 1)
+        self.boss = Boss(self, 245, 48)
 
     def run(self):
         self.playing = True
