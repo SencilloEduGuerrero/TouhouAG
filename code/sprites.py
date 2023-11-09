@@ -21,6 +21,11 @@ class Player(pg.sprite.Sprite):
         self.y = y
         self.pos = vec(x, y)
         self.last_shot = 0
+        self.last_shotS = 0
+        self.health = PLAYER_HEALTH
+        self.special = PLAYER_SPECIAL
+
+    SPECIAL_REGEN_RATE = 10
 
     def get_keys(self):
         self.vx, self.vy = 0, 0
@@ -49,12 +54,23 @@ class Player(pg.sprite.Sprite):
 
         if keys[pg.K_SPACE]:
             now = pg.time.get_ticks()
-            if now - self.last_shot > BULLET_RATE:
-                self.last_shot = now
+            if now - self.last_shotS > BULLET_RATE:
+                self.last_shotS = now
                 self.bullets_attack()
 
-        if keys[pg.K_z]:
-            self.bullets_special()
+        if self.special >= 1000:
+            if keys[pg.K_z]:
+                now = pg.time.get_ticks()
+                if now - self.last_shot > SBULLET_RATE:
+                    self.last_shot = now
+                    self.special -= 1000
+                    self.bullets_special()
+            else:
+                self.special += Player.SPECIAL_REGEN_RATE
+        else:
+            self.special += Player.SPECIAL_REGEN_RATE
+
+        self.special = min(PLAYER_SPECIAL, self.special)
 
     def move(self, dx=0, dy=0):
         if not self.collide_with_walls(dx, dy):
@@ -83,10 +99,18 @@ class Player(pg.sprite.Sprite):
                 self.rect.y = self.y
 
     def bullets_attack(self):
+        attack = pg.mixer.Sound(os.path.join('audio', 'damage00.wav'))
+        attack.set_volume(0.3)
+        pg.mixer.Sound.play(attack)
+
         bullet1 = BulletCard(self.game, self.pos)
         bullet2 = BulletCard(self.game, self.pos + vec(24, 0))
 
     def bullets_special(self):
+        special = pg.mixer.Sound(os.path.join('audio', 'power1.wav'))
+        special.set_volume(0.3)
+        pg.mixer.Sound.play(special)
+
         bulletA = BulletSpecial(self.game, self.pos + vec(-35, 22))
         bulletB = BulletSpecial(self.game, self.pos + vec(60, 22))
         bulletC = BulletSpecial(self.game, self.pos + vec(12, 70))
@@ -158,6 +182,9 @@ class BulletSpecial(pg.sprite.Sprite):
             self.rect.center = self.pos
 
             if self.pos.y <= 0:
+                bounce = pg.mixer.Sound(os.path.join('audio', 'tan00.wav'))
+                pg.mixer.Sound.play(bounce)
+                bounce.set_volume(0.1)
                 self.vel.y = SBULLET_SPEED
 
             self.pos += self.vel * self.game.dt
@@ -225,7 +252,6 @@ class Wall(pg.sprite.Sprite):
         pg.sprite.Sprite.__init__(self, self.groups)
         self.game = game
         self.image = pg.Surface((TILESIZE, TILESIZE))
-        self.image.fill(BLACK)
         self.rect = self.image.get_rect()
         self.x = x
         self.y = y
