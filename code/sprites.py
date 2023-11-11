@@ -40,14 +40,6 @@ class Player(pg.sprite.Sprite):
         if keys[pg.K_DOWN] or keys[pg.K_s]:
             self.vy = PLAYER_SPEED
 
-        if keys[pg.K_LCTRL]:
-            self.vx *= 0.5
-            self.vy *= 0.5
-
-        if keys[pg.K_LSHIFT]:
-            self.vx *= 2.0
-            self.vy *= 2.0
-
         if self.vx != 0 and self.vy != 0:
             self.vx *= 0.7071
             self.vy *= 0.7071
@@ -236,14 +228,100 @@ class Boss(pg.sprite.Sprite):
         self.x = x
         self.y = y
         self.pos = vec(self.x, self.y)
+        self.vel = vec(0, 0)
+        self.last_move_time = pg.time.get_ticks()
+        self.move_interval = random.randint(1000, 3000)
+        self.target_x = 0
+        self.target_y = 0
+        self.first_step = False
+        self.health = BOSS_HEALTH
+        self.phase = PHASE
+        self.last_shot = 0
+        self.bullet_spiral_timer = 0
+        self.next_bullet_spiral_time = self.get_next_bullet_spiral_time()
 
-    def get_position(self):
-        return self.pos
+    @staticmethod
+    def get_next_bullet_spiral_time():
+        return pg.time.get_ticks() + random.randint(MIN_BULLET_INTERVAL, MAX_BULLET_INTERVAL)
+
+    def set_new_move_interval(self):
+        self.move_interval = random.randint(MIN_MOVE_INTERVAL, MAX_MOVE_INTERVAL)
+        self.target_x = random.randint(0, WIDTH_GAME - self.rect.width)
+        self.target_y = random.randint(48, HEIGHT / 4 - self.rect.height)
 
     def update(self):
-        self.rect.x = self.x
-        self.rect.y = self.y
-        self.pos = vec(self.x, self.y)
+        current_time = pg.time.get_ticks()
+        elapsed_time = current_time - self.last_move_time
+
+        if current_time >= self.next_bullet_spiral_time:
+            self.boss_bullets_attack()
+            self.next_bullet_spiral_time = self.get_next_bullet_spiral_time()
+
+        if elapsed_time >= self.move_interval:
+            self.set_new_move_interval()
+            self.last_move_time = current_time
+            if not self.first_step:
+                self.first_step = True
+
+        else:
+            self.move_interval = random.randint(4000, 8000)
+
+        if self.first_step:
+            interp_factor = 0.1
+            self.pos.x = pg.math.lerp(self.pos.x, self.target_x, interp_factor)
+            self.pos.y = pg.math.lerp(self.pos.y, self.target_y, interp_factor)
+
+            self.pos.x = max(0, min(int(self.pos.x), WIDTH_GAME - self.rect.width))
+            self.pos.y = max(48, min(int(self.pos.y), HEIGHT / 4 - self.rect.height))
+
+            self.rect.topleft = int(self.pos.x), int(self.pos.y)
+        else:
+            interp_factor = 0.1
+            self.pos.x = pg.math.lerp(self.pos.x, self.target_x, interp_factor)
+            self.pos.y = pg.math.lerp(self.pos.y, self.target_y, interp_factor)
+
+            self.pos.x = max(245, min(int(self.pos.x), WIDTH_GAME - self.rect.width))
+            self.pos.y = max(96, min(int(self.pos.y), HEIGHT / 4 - self.rect.height))
+
+            self.rect.topleft = self.pos.x, self.pos.y
+
+    def boss_bullets_attack(self):
+        attack = pg.mixer.Sound(os.path.join('audio', 'graze.wav'))
+        attack.set_volume(0.05)
+        pg.mixer.Sound.play(attack)
+
+        bullet1 = BulletSpiral(self.game, self.rect.center)
+        self.game.bullets.add(bullet1)
+
+
+class BulletSpiral(pg.sprite.Sprite):
+    def __init__(self, game, boss_pos):
+        super().__init__()
+        self.groups = game.all_sprites, game.bullets
+        pg.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        bulletb_path = os.path.join("graphics", "K_Shots_A.png")
+        self.image = pg.image.load(bulletb_path)
+        self.rect = self.image.get_rect()
+        self.pos = vec(boss_pos)
+        self.rect.center = boss_pos
+        self.angle = 0
+        self.radius = 2
+        self.angular_speed = 2
+        self.lifetime = B_BULLET_LIFETIME
+        self.speed = B_BULLET_SPEED
+
+    def update(self):
+        self.angle += self.angular_speed * self.game.dt
+
+        self.pos.x = self.rect.centerx + math.cos(self.angle) * self.radius
+        self.pos.y = self.rect.centery + math.sin(self.angle) * self.radius
+
+        self.pos.y += self.speed * self.game.dt
+        self.rect.center = (round(self.pos.x), round(self.pos.y))
+
+        if self.rect.top < 0:
+            self.kill()
 
 
 class Wall(pg.sprite.Sprite):

@@ -4,8 +4,24 @@ from sprites import *
 from settings import *
 
 
-def draw_HUD(surf, x, y):
-    pass
+def draw_boss_health(surf, x, y, hbar):
+    if hbar < 0:
+        hbar = 0
+    BAR_LENGTH = 508
+    BAR_HEIGHT = 16
+    fill = hbar * BAR_LENGTH
+
+    fill_rect = pg.Rect(x, y, fill, BAR_HEIGHT)
+    col = RED
+
+    BAR_LENGTH2 = 508
+    BAR_HEIGHT2 = 12
+    fill2 = hbar * BAR_LENGTH2
+    fill_rect2 = pg.Rect(x, y + 2, fill2, BAR_HEIGHT2)
+    col2 = WHITE
+
+    pg.draw.rect(surf, col, fill_rect)
+    pg.draw.rect(surf, col2, fill_rect2)
 
 
 def draw_player_health(surf, x, y, hbar):
@@ -51,8 +67,8 @@ def draw_custom_fonts(surf):
     powerText = custom_font.render("Player Power", True, (255, 255, 255))
 
     bNameText = custom_fontB.render("Komeji Koishi", True, (255, 255, 255))
-    bSpellAText = custom_font.render("Spell 1", True, (255, 255, 255))
-    bSpellBText = custom_font.render("Spell 2", True, (255, 255, 255))
+    bSpellAText = custom_font.render("Spell 1", True, (90, 115, 255))
+    bSpellBText = custom_font.render("Spell 2", True, (90, 115, 255))
 
     extraTextR = extraText.get_rect()
     healthTextR = healthText.get_rect()
@@ -94,6 +110,7 @@ class Game:
 
     def new(self):
         self.all_sprites = pg.sprite.Group()
+        self.bullets = pg.sprite.Group()
         self.walls = pg.sprite.Group()
         for row in range(17):
             Wall(self, -1, row)
@@ -118,6 +135,8 @@ class Game:
 
     def update(self):
         self.all_sprites.update()
+        self.bullets.update()
+        self.all_sprites.draw(self.screen)
 
         if self.player.health <= 0:
             self.playing = False
@@ -174,6 +193,7 @@ class Game:
         draw_custom_fonts(self.screen)
         draw_player_health(self.screen, 576, 140, self.player.health / PLAYER_HEALTH)
         draw_player_power(self.screen, 576, 228, self.player.special / PLAYER_SPECIAL)
+        draw_boss_health(self.screen, 10, 10, self.boss.health / BOSS_HEALTH)
 
         pg.display.flip()
         self.clock.tick(60)
