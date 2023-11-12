@@ -237,7 +237,6 @@ class Game:
                     quit()
                 if event.key == pg.K_x:
                     self.boss.health -= 100
-                    self.player.health -= 10
                     if self.boss.health <= 0:
                         PHASE += 1
 

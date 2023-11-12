@@ -26,7 +26,7 @@ class Player(pg.sprite.Sprite):
         self.health = PLAYER_HEALTH
         self.special = PLAYER_SPECIAL
 
-        self.decoration_path = os.path.join("graphics", "R_SPELL.png")
+        self.decoration_path = os.path.join("graphics", "R_Spell.png")
         self.decoration_image = pg.image.load(self.decoration_path)
         self.decoration_image = pg.transform.scale(self.decoration_image, (48, 48))
         self.decoration_rect = self.decoration_image.get_rect()
@@ -268,8 +268,10 @@ class Boss(pg.sprite.Sprite):
         self.last_shot = 0
         self.bullet_spiral_timer = 0
         self.next_bullet_spiral_time = self.get_next_bullet_spiral_time()
+        self.next_bullet_spiral_time_2 = self.get_next_bullet_spiral_time_2()
         self.bullet_special_timer = 0
         self.next_bullet_special_time = self.get_next_bullet_special_time()
+        self.line_attack = False
 
         self.decoration_path = os.path.join("graphics", "K_Spell.png")
         self.decoration_image = pg.image.load(self.decoration_path)
@@ -280,6 +282,10 @@ class Boss(pg.sprite.Sprite):
     @staticmethod
     def get_next_bullet_spiral_time():
         return pg.time.get_ticks() + random.randint(MIN_BULLET_INTERVAL, MAX_BULLET_INTERVAL)
+
+    @staticmethod
+    def get_next_bullet_spiral_time_2():
+        return pg.time.get_ticks() + random.randint(MIN_BULLET_INTERVAL * 3, MAX_BULLET_INTERVAL * 3)
 
     @staticmethod
     def get_next_bullet_special_time():
@@ -331,12 +337,17 @@ class Boss(pg.sprite.Sprite):
                         self.health = 1000
                 case 2:
                     if self.health >= 500:
-                        pass
+                        if current_time >= self.next_bullet_spiral_time_2:
+                            self.boss_bullets_attack_3()
+                            self.next_bullet_spiral_time_2 = self.get_next_bullet_spiral_time_2()
                     elif 0 < self.health < 500:
                         if not self.berserk:
+                            self.line_attack = False
                             self.spell_card()
 
-                        pass
+                        if current_time >= self.next_bullet_special_time:
+                            self.boss_bullets_special_3()
+                            self.next_bullet_special_time = self.get_next_bullet_special_time()
                     else:
                         PHASE += 1
                         self.boss_defeated()
@@ -386,6 +397,15 @@ class Boss(pg.sprite.Sprite):
         self.game.bullets.add(bullet1)
         self.game.bullets.add(bullet2)
 
+    def boss_bullets_attack_3(self):
+        attack = pg.mixer.Sound(os.path.join('audio', 'plst00.wav'))
+        attack.set_volume(0.2)
+        pg.mixer.Sound.play(attack)
+
+        for i in range(9):
+            bullet1 = BulletFall(self.game, vec(64 * i, 96))
+            self.game.bullets.add(bullet1)
+
     def spell_card(self):
         special = pg.mixer.Sound(os.path.join('audio', 'cat00.wav'))
         special.set_volume(0.3)
@@ -429,6 +449,33 @@ class Boss(pg.sprite.Sprite):
         pg.mixer.Sound.play(attack)
 
         charge = BulletCharge(self.game, self.rect.center)
+
+    def boss_bullets_special_3(self):
+        attack = pg.mixer.Sound(os.path.join('audio', 'lazer01.wav'))
+        attack.set_volume(0.5)
+        pg.mixer.Sound.play(attack)
+
+        MIN_SEPARATION = 48
+        flower_positions = set()
+
+        def generate_random_flower_position():
+            while True:
+                x = random.randint(0, WIDTH_GAME - 12)
+                if all(abs(x - pos) >= MIN_SEPARATION for pos in flower_positions):
+                    flower_positions.add(x)
+                    return x
+
+        S_SEED_SPAWN_1 = generate_random_flower_position()
+        S_SEED_SPAWN_2 = generate_random_flower_position()
+        S_SEED_SPAWN_3 = generate_random_flower_position()
+        S_SEED_SPAWN_4 = generate_random_flower_position()
+        S_SEED_SPAWN_5 = generate_random_flower_position()
+
+        flower1 = BulletFlower(self.game, vec(S_SEED_SPAWN_1, self.pos.y))
+        flower2 = BulletFlower(self.game, vec(S_SEED_SPAWN_2, self.pos.y))
+        flower3 = BulletFlower(self.game, vec(S_SEED_SPAWN_3, self.pos.y))
+        flower4 = BulletFlower(self.game, vec(S_SEED_SPAWN_4, self.pos.y))
+        flower5 = BulletFlower(self.game, vec(S_SEED_SPAWN_5, self.pos.y))
 
     def draw(self, surf):
         if self.berserk:
@@ -636,6 +683,111 @@ class BulletLazer(pg.sprite.Sprite):
 
         if self.rect.top > HEIGHT:
             self.kill()
+
+
+class BulletLine(pg.sprite.Sprite):
+    def __init__(self, game, pos):
+        super().__init__(game.all_sprites)
+        self.game = game
+        bullets_path = os.path.join("graphics", "K_Line.png")
+        self.original_image = pg.image.load(bullets_path)
+        self.original_image = pg.transform.scale(self.original_image, (WIDTH_GAME, 16))
+        self.image = self.original_image
+        self.rect = self.image.get_rect()
+        self.pos = vec(pos)
+        self.rect.center = pos
+        self.vel = vec(0, 0)
+        self.spawn_time = pg.time.get_ticks()
+        self.first_set_delay = 500
+        self.second_set_delay = 750
+        self.spawned_first_set = False
+
+    def update(self):
+        current_time = pg.time.get_ticks()
+        elapsed_time = current_time - self.spawn_time
+
+        self.pos += self.vel * self.game.dt
+        self.rect.center = self.pos
+
+
+class BulletFall(pg.sprite.Sprite):
+    def __init__(self, game, pos):
+        super().__init__(game.all_sprites)
+        self.game = game
+        bullets_path = os.path.join("graphics", "K_Shots_C.png")
+        self.original_image = pg.image.load(bullets_path)
+        self.original_image = pg.transform.scale(self.original_image, (24, 48))
+        self.image = self.original_image
+        self.rect = self.image.get_rect()
+        self.pos = vec(pos)
+        self.rect.center = pos
+        self.vel = vec(0, BULLET_SPEED / 10)
+        self.spawn_time = pg.time.get_ticks()
+        self.delay = 500
+
+    def update(self):
+        current_time = pg.time.get_ticks()
+        elapsed_time = current_time - self.spawn_time
+
+        if elapsed_time >= self.delay:
+            self.pos += self.vel * self.game.dt
+            self.rect.center = self.pos
+
+        if self.rect.top > HEIGHT:
+            self.kill()
+
+
+class BulletFlower(pg.sprite.Sprite):
+    def __init__(self, game, pos):
+        super().__init__(game.all_sprites)
+        self.game = game
+        bullets_path = os.path.join("graphics", "K_Seed.png")
+        self.original_image = pg.image.load(bullets_path)
+        self.original_image = pg.transform.scale(self.original_image, (24, 24))
+        self.image = self.original_image
+        self.rect = self.image.get_rect()
+        self.pos = vec(pos)
+        self.rect.center = pos
+        self.vel = vec(0, -BS_BULLET_SPEED)
+        self.spawn_time = pg.time.get_ticks()
+        self.delay = 500
+        self.bounce_count = 0
+
+    def update(self):
+        current_time = pg.time.get_ticks()
+        elapsed_time = current_time - self.spawn_time
+
+        if elapsed_time >= self.delay:
+            self.pos.y += self.vel.y * self.game.dt
+            self.rect.center = self.pos
+
+            if self.pos.y <= 0 and self.bounce_count == 0:
+                self.bounce_count += 1
+                self.vel.y = B_BULLET_SPEED * 2
+
+                bounce = pg.mixer.Sound(os.path.join('audio', 'powerup.wav'))
+                pg.mixer.Sound.play(bounce)
+                bounce.set_volume(0.1)
+
+            if self.pos.y >= HEIGHT and self.bounce_count == 1:
+                bullets_path = os.path.join("graphics", "K_Flower.png")
+                self.original_image = pg.image.load(bullets_path)
+                self.original_image = pg.transform.scale(self.original_image, (64, 64))
+                self.image = self.original_image
+                self.rect = self.image.get_rect()
+
+                self.bounce_count += 1
+                self.vel.y = -B_BULLET_SPEED / 2
+
+                bounce = pg.mixer.Sound(os.path.join('audio', 'ok00.wav'))
+                pg.mixer.Sound.play(bounce)
+                bounce.set_volume(0.1)
+
+            self.pos.y += self.vel.y * self.game.dt
+            self.rect.center = self.pos
+
+            if self.rect.top > HEIGHT:
+                self.kill()
 
 
 class Wall(pg.sprite.Sprite):
