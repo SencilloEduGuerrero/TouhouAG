@@ -14,7 +14,8 @@ Se añadio fondos por fases (falta 3ero por terminar).
 Se anadio el movimiento del Jefe y la barra de vida del Jefe.
 
 # 10/11/2023
-
+Se añadio el ataque basico del jefe, el ataque especial, fases y el fondo 3 ya esta finalizado.
+(Falta implementar fase 1 y 2).
 
 # 11/11/2023
 
@@ -25,13 +26,10 @@ Se anadio el movimiento del Jefe y la barra de vida del Jefe.
 # Cosas por añadir:
 -Implementar hitbox y dibujo de la hitbox.
 -Sonidos (Daño y Muerte)
--Jefe con Ataques
--Jefe con Fases
--Jefe con Sonidos
 
 # attack 1: Basic, attack 2: Ultimate
-    # def attack 1 *, 2 (Phase 0)
-    # def attack 1, 2 (Phase 1)
+    # def attack 1 *, 2 (Phase 0) *
+    # def attack 1 *, 2 (Phase 1) *
     # def attack 1, 2 (Phase 2)
 
 +Algoritmo Genetico implementado

@@ -4,6 +4,7 @@ from sprites import *
 from settings import *
 
 
+
 def draw_boss_health(surf, x, y, hbar):
     if hbar < 0:
         hbar = 0
@@ -57,6 +58,9 @@ def draw_player_power(surf, x, y, hbar):
 
 
 def draw_custom_fonts(surf):
+    global PHASE
+    global B_SPELL_CARD
+
     font_path = os.path.join("resources", "Pixel Emulator.otf")
     custom_font = pg.font.Font(font_path, 20)
     custom_fontE = pg.font.Font(font_path, 30)
@@ -67,8 +71,9 @@ def draw_custom_fonts(surf):
     powerText = custom_font.render("Player Power", True, (255, 255, 255))
 
     bNameText = custom_fontB.render("Komeji Koishi", True, (255, 255, 255))
-    bSpellAText = custom_font.render("Spell 1", True, (90, 115, 255))
-    bSpellBText = custom_font.render("Spell 2", True, (90, 115, 255))
+    bSpellAText = custom_font.render("'Ancestors Standing Beside You'", True, (90, 115, 255))
+    bSpellBText = custom_font.render("'Youkai Lazer'", True, (90, 115, 255))
+    bSpellCText = custom_font.render("'Subterranean Rose'", True, (90, 115, 255))
 
     extraTextR = extraText.get_rect()
     healthTextR = healthText.get_rect()
@@ -77,22 +82,34 @@ def draw_custom_fonts(surf):
     bNameTextR = bNameText.get_rect()
     bSpellATextR = bSpellAText.get_rect()
     bSpellBTextR = bSpellBText.get_rect()
+    bSpellCTextR = bSpellCText.get_rect()
 
     extraTextR.center = (670, 50)
     healthTextR.center = (673, 120)
     powerTextR.center = (673, 210)
 
     bNameTextR.center = (70, 40)
-    bSpellATextR.center = (400, 70)
-    bSpellBTextR.center = (400, 70)
+    bSpellATextR.center = (295, 60)
+    bSpellBTextR.center = (390, 60)
+    bSpellCTextR.center = (390, 60)
 
     surf.blit(extraText, extraTextR)
     surf.blit(healthText, healthTextR)
     surf.blit(powerText, powerTextR)
 
-    surf.blit(bNameText, bNameTextR)
-    surf.blit(bSpellAText, bSpellATextR)
-    surf.blit(bSpellBText, bSpellBTextR)
+    match PHASE:
+        case 0:
+            if B_SPELL_CARD:
+                surf.blit(bSpellAText, bSpellATextR)
+        case 1:
+            if B_SPELL_CARD:
+                surf.blit(bSpellBText, bSpellBTextR)
+        case 2:
+            if B_SPELL_CARD:
+                surf.blit(bSpellCText, bSpellCTextR)
+
+    if PHASE < 3:
+        surf.blit(bNameText, bNameTextR)
 
 
 class Game:
@@ -134,20 +151,20 @@ class Game:
         sys.exit()
 
     def update(self):
+        global B_SPELL_CARD
+
         self.all_sprites.update()
         self.bullets.update()
         self.all_sprites.draw(self.screen)
 
-        if self.player.health <= 0:
-            self.playing = False
-
-    # def draw_grid(self):
-    #     for x in range (0, WIDTH, TILESIZE):
-    #         pg.draw.line(self.screen, LIGHTGREY, (x, 0), (x, HEIGHT))
-    #     for y in range (0, HEIGHT, TILESIZE):
-    #         pg.draw.line(self.screen, LIGHTGREY, (0, y), (WIDTH, y))
+        if 0 < self.boss.health < 500:
+            B_SPELL_CARD = True
+        else:
+            B_SPELL_CARD = False
 
     def draw(self):
+        global B_SPELL_CARD
+
         pg.display.set_caption(GAME_NAME + " FPS:({:.0f})".format(self.clock.get_fps()))
 
         match PHASE:
@@ -164,7 +181,7 @@ class Game:
             case 1:
                 self.background = pg.transform.scale(BACKGROUND_A, (528, 816))
 
-                self.background_position += 10
+                self.background_position += 5
 
                 if self.background_position >= self.background.get_height():
                     self.background_position = 0
@@ -176,7 +193,7 @@ class Game:
             case 2:
                 self.background = pg.transform.scale(BACKGROUND_B, (528, 816))
 
-                self.background_position += 15
+                self.background_position += 10
 
                 if self.background_position >= self.background.get_height():
                     self.background_position = 0
@@ -185,7 +202,19 @@ class Game:
 
                 self.screen.blit(self.background, (0, self.background_position - self.background.get_height()))
                 self.screen.blit(self.background, (0, self.background_position))
+            case 3:
+                pg.mixer.music.stop()
+                self.screen.fill(BLACK)
 
+        DARK_OVERLAY = pg.Surface((WIDTH_GAME, HEIGHT))
+        DARK_OVERLAY.set_alpha(150)
+        DARK_OVERLAY.fill((0, 0, 0, 0))
+
+        if B_SPELL_CARD:
+            self.screen.blit(DARK_OVERLAY, (0, 0))
+
+        self.player.draw(self.screen)
+        self.boss.draw(self.screen)
         self.all_sprites.draw(self.screen)
         self.screen.blit(HUD, (528, 0))
 
@@ -206,23 +235,18 @@ class Game:
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_ESCAPE:
                     quit()
-                if event.key == pg.K_t:
-                    PHASE += 1
+                if event.key == pg.K_x:
+                    self.boss.health -= 100
+                    self.player.health -= 10
+                    if self.boss.health <= 0:
+                        PHASE += 1
 
-                    if PHASE > 2:
-                        PHASE = 2
-
-    def show_start_screen(self):
-        pass
-
-    def show_go_screen(self):
-        pass
+                if PHASE > 3:
+                    PHASE = 3
 
 
 if __name__ == '__main__':
     g = Game()
-    g.show_start_screen()
     while True:
         g.new()
         g.run()
-        g.show_go_screen()
