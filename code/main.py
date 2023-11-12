@@ -4,7 +4,6 @@ from sprites import *
 from settings import *
 
 
-
 def draw_boss_health(surf, x, y, hbar):
     if hbar < 0:
         hbar = 0
@@ -128,6 +127,10 @@ class Game:
     def new(self):
         self.all_sprites = pg.sprite.Group()
         self.bullets = pg.sprite.Group()
+        self.player_bullets = pg.sprite.Group()
+        self.player_special = pg.sprite.Group()
+        self.boss_group = pg.sprite.Group()
+        self.player_group = pg.sprite.Group()
         self.walls = pg.sprite.Group()
         for row in range(17):
             Wall(self, -1, row)
@@ -137,6 +140,8 @@ class Game:
                 Wall(self, row, -1)
         self.player = Player(self, 252, 722)
         self.boss = Boss(self, 245, 96)
+        self.boss_group.add(self.boss)
+        self.player_group.add(Hitbox(self.player))
 
     def run(self):
         self.playing = True
@@ -155,7 +160,24 @@ class Game:
 
         self.all_sprites.update()
         self.bullets.update()
+        self.player_bullets.update()
+        self.player_special.update()
         self.all_sprites.draw(self.screen)
+
+        hits = pg.sprite.groupcollide(self.player_group, self.bullets, False, True)
+        for player in hits:
+            for bullet in hits[player]:
+                self.player.take_damage(5)
+
+        hits = pg.sprite.groupcollide(self.boss_group, self.player_bullets, False, True)
+        for boss in hits:
+            for bullet in hits[boss]:
+                self.boss.take_damage(2)
+
+        hits = pg.sprite.groupcollide(self.boss_group, self.player_special, False, False)
+        for boss in hits:
+            for bullet in hits[boss]:
+                self.boss.take_damage(5)
 
         if 0 < self.boss.health < 500:
             B_SPELL_CARD = True
@@ -214,6 +236,7 @@ class Game:
             self.screen.blit(DARK_OVERLAY, (0, 0))
 
         self.player.draw(self.screen)
+        self.boss_group.draw(self.screen)
         self.boss.draw(self.screen)
         self.all_sprites.draw(self.screen)
         self.screen.blit(HUD, (528, 0))
@@ -235,13 +258,11 @@ class Game:
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_ESCAPE:
                     quit()
-                if event.key == pg.K_x:
-                    self.boss.health -= 100
-                    if self.boss.health <= 0:
-                        PHASE += 1
 
-                if PHASE > 3:
-                    PHASE = 3
+        if self.boss.health <= 0:
+            PHASE += 1
+        if PHASE > 3:
+            PHASE = 3
 
 
 if __name__ == '__main__':

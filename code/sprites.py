@@ -7,6 +7,22 @@ from settings import *
 vec = pg.math.Vector2
 
 
+class Hitbox(pg.sprite.Sprite):
+    def __init__(self, player):
+        super().__init__(player.game.all_sprites)
+        self.player = player
+        hitbox_path = os.path.join("graphics", "R_Hitbox.png")
+        self.image = pg.image.load(hitbox_path)
+        self.image = pg.transform.scale(self.image, (8, 8))
+        self.rect = self.image.get_rect()
+
+    def update(self):
+        if self.player.player_alive:
+            self.rect.center = self.player.rect.center
+        else:
+            self.kill()
+
+
 class Player(pg.sprite.Sprite):
     def __init__(self, game, x, y):
         super().__init__()
@@ -31,6 +47,8 @@ class Player(pg.sprite.Sprite):
         self.decoration_image = pg.transform.scale(self.decoration_image, (48, 48))
         self.decoration_rect = self.decoration_image.get_rect()
         self.decoration_offset = (0, 0)
+
+        self.hitbox = Hitbox(self)
 
     SPECIAL_REGEN_RATE = 10
 
@@ -134,9 +152,21 @@ class Player(pg.sprite.Sprite):
             self.collide_with_walls('y')
             self.pos = vec(self.x, self.y)
 
+            self.hitbox.update()
+
             self.decoration_rect.center = (self.rect.centerx + self.decoration_offset[0],
                                            self.rect.centery + self.decoration_offset[1])
 
+            if self.health <= 0:
+                self.player_defeated()
+
+    def take_damage(self, damage):
+        special = pg.mixer.Sound(os.path.join('audio', 'timeout.wav'))
+        special.set_volume(0.5)
+        pg.mixer.Sound.play(special)
+
+        if self.player_alive:
+            self.health -= damage
             if self.health <= 0:
                 self.player_defeated()
 
@@ -156,7 +186,7 @@ class Player(pg.sprite.Sprite):
 
 class BulletCard(pg.sprite.Sprite):
     def __init__(self, game, pos):
-        self.groups = game.all_sprites
+        self.groups = game.all_sprites, game.player_bullets
         pg.sprite.Sprite.__init__(self, self.groups)
         self.game = game
         bulletc_path = os.path.join("graphics", "R_Shots_A.png")
@@ -176,7 +206,7 @@ class BulletCard(pg.sprite.Sprite):
 
 class BulletSpecial(pg.sprite.Sprite):
     def __init__(self, game, pos):
-        super().__init__(game.all_sprites)
+        super().__init__(game.all_sprites, game.player_special)
         self.game = game
 
         self.colors = ["R_Special_RA.png", "R_Special_GA.png", "R_Special_BA.png"]
@@ -216,7 +246,7 @@ class BulletSpecial(pg.sprite.Sprite):
 
 class BulletSpecialMini(pg.sprite.Sprite):
     def __init__(self, game, pos):
-        super().__init__(game.all_sprites)
+        super().__init__(game.all_sprites, game.player_bullets)
         self.game = game
 
         self.colors = ["R_Special_RB.png", "R_Special_GB.png", "R_Special_BB.png"]
@@ -420,6 +450,16 @@ class Boss(pg.sprite.Sprite):
 
         self.berserk = False
 
+    def take_damage(self, damage):
+        special = pg.mixer.Sound(os.path.join('audio', 'item00.wav'))
+        special.set_volume(0.05)
+        pg.mixer.Sound.play(special)
+
+        if self.boss_alive:
+            self.health -= damage
+            if self.health <= 0 and PHASE == 3:
+                self.boss_defeated()
+
     def boss_defeated(self):
         special = pg.mixer.Sound(os.path.join('audio', 'enep01.wav'))
         special.set_volume(0.1)
@@ -516,9 +556,9 @@ class BulletSpiral(pg.sprite.Sprite):
 
 class BulletDiamondV(pg.sprite.Sprite):
     def __init__(self, game, pos):
-        super().__init__(game.all_sprites)
+        super().__init__(game.all_sprites, game.bullets)
         self.game = game
-        bullets_path = os.path.join("graphics", "K_SPECIAL_A.png")
+        bullets_path = os.path.join("graphics", "K_Special_A.png")
         self.original_image = pg.image.load(bullets_path)
         self.original_image = pg.transform.scale(self.original_image, (24, 48))
         self.image = self.original_image
@@ -552,7 +592,7 @@ class BulletDiamondV(pg.sprite.Sprite):
 
 class BulletDiamondH(pg.sprite.Sprite):
     def __init__(self, game, pos):
-        super().__init__(game.all_sprites)
+        super().__init__(game.all_sprites, game.bullets)
         self.game = game
         bullets_path = os.path.join("graphics", "K_SPECIAL_B.png")
         self.original_image = pg.image.load(bullets_path)
@@ -588,9 +628,7 @@ class BulletDiamondH(pg.sprite.Sprite):
 
 class BulletSpam(pg.sprite.Sprite):
     def __init__(self, game, boss_pos):
-        super().__init__()
-        self.groups = game.all_sprites, game.bullets
-        pg.sprite.Sprite.__init__(self, self.groups)
+        super().__init__(game.all_sprites, game.bullets)
         self.game = game
         bulletb_path = os.path.join("graphics", "K_Shots_B.png")
         self.image = pg.image.load(bulletb_path)
@@ -625,7 +663,7 @@ class BulletSpam(pg.sprite.Sprite):
 
 class BulletCharge(pg.sprite.Sprite):
     def __init__(self, game, pos):
-        super().__init__(game.all_sprites)
+        super().__init__(game.all_sprites, game.bullets)
         self.game = game
         bullets_path = os.path.join("graphics", "K_Lazer_A.png")
         self.original_image = pg.image.load(bullets_path)
@@ -662,7 +700,7 @@ class BulletCharge(pg.sprite.Sprite):
 
 class BulletLazer(pg.sprite.Sprite):
     def __init__(self, game, pos):
-        super().__init__(game.all_sprites)
+        super().__init__(game.all_sprites, game.bullets)
         self.game = game
         bullets_path = os.path.join("graphics", "K_Lazer_B.png")
         self.original_image = pg.image.load(bullets_path)
@@ -739,7 +777,7 @@ class BulletFall(pg.sprite.Sprite):
 
 class BulletFlower(pg.sprite.Sprite):
     def __init__(self, game, pos):
-        super().__init__(game.all_sprites)
+        super().__init__(game.all_sprites, game.bullets)
         self.game = game
         bullets_path = os.path.join("graphics", "K_Seed.png")
         self.original_image = pg.image.load(bullets_path)

@@ -18,18 +18,15 @@ Se añadio el ataque basico del jefe, el ataque especial, fases y el fondo 3 ya 
 (Falta implementar fase 1 y 2).
 
 # 11/11/2023
-
+Se implementaron los ultimos ataques, daño y se ajustaron muchas cosas.
 
 # 12/11/2023
+Se añadio una mejor hitbox y se finalizo el juego.
 
-
-# Cosas por añadir:
--Implementar hitbox y dibujo de la hitbox.
--Sonidos (Daño y Muerte)
 
 # attack 1: Basic, attack 2: Ultimate
     # def attack 1 *, 2 (Phase 0) *
     # def attack 1 *, 2 (Phase 1) *
-    # def attack 1, 2 (Phase 2)
+    # def attack 1 *, 2 (Phase 2) * 
 
 +Algoritmo Genetico implementado
